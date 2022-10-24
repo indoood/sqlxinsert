@@ -166,7 +166,7 @@ pub fn derive_from_struct_psql(input: TokenStream) -> TokenStream {
                 sqlquery
             }
 
-            pub async fn insert<T>(&self, pool: &sqlx::PgPool, table: &str) -> eyre::Result<T>
+            pub async fn insert<T>(&self, tx: &mut sqlx::Transaction<'static, sqlx::Postgres>, table: &str) -> eyre::Result<T>
             where
                 T: Send,
                 T: for<'c> sqlx::FromRow<'c, sqlx::postgres::PgRow>,
@@ -174,12 +174,11 @@ pub fn derive_from_struct_psql(input: TokenStream) -> TokenStream {
             {
                 let sql = self.insert_query(table);
 
-                // let mut pool = pool;
                 let res: T = sqlx::query_as::<_,T>(&sql)
                 #(
                     .bind(&self.#field_name_values)//         let #field_name: #field_type = Default::default();
                 )*
-                    .fetch_one(pool)
+                    .fetch_one(tx)
                     .await?;
 
                 Ok(res)
